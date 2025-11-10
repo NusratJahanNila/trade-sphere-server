@@ -32,7 +32,7 @@ async function run() {
         const result = await productsCollection.find().toArray();
         res.send(result);
     })
-    
+
     // Product details
     app.get('/products/:id', async (req, res) => {
         const id = req.params.id;
@@ -53,6 +53,15 @@ async function run() {
         const newProduct = req.body;
         const result = await productsCollection.insertOne(newProduct)
         res.send(result)
+    })
+
+    // My Export
+    app.get('/my-export',async(req,res)=>{
+        const email=req.query.email;
+        const query={exportby: email}
+        
+        const result =await productsCollection .find(query).toArray();
+        res.send(result);
     })
 
 
