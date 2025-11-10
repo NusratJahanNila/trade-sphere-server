@@ -40,7 +40,11 @@ async function run() {
         const result = await productsCollection.findOne(query);
         res.send(result)
       })
-
+    // Latest products
+      app.get('/latest-products', async (req, res) => {
+        const result = await productsCollection.find().sort({ exportAt: -1 }).limit(6).toArray()
+        res.send(result)
+      })
     // ping
     await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
