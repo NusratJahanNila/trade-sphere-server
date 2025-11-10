@@ -32,6 +32,7 @@ async function run() {
         const result = await productsCollection.find().toArray();
         res.send(result);
     })
+    
     // Product details
     app.get('/products/:id', async (req, res) => {
         const id = req.params.id;
@@ -39,12 +40,22 @@ async function run() {
 
         const result = await productsCollection.findOne(query);
         res.send(result)
-      })
+    })
+
     // Latest products
       app.get('/latest-products', async (req, res) => {
         const result = await productsCollection.find().sort({ exportAt: -1 }).limit(6).toArray()
         res.send(result)
-      })
+    })
+    
+    // Add export
+    app.post('/products', async (req, res) => {
+        const newProduct = req.body;
+        const result = await productsCollection.insertOne(newProduct)
+        res.send(result)
+    })
+
+
     // ping
     await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
