@@ -1,7 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const app=express();
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const port=process.env.PORT || 3000;
 
 // Middleware
@@ -32,6 +32,14 @@ async function run() {
         const result = await productsCollection.find().toArray();
         res.send(result);
     })
+    // Product details
+    app.get('/products/:id', async (req, res) => {
+        const id = req.params.id;
+        const query = { _id: new ObjectId(id) }
+
+        const result = await productsCollection.findOne(query);
+        res.send(result)
+      })
 
     // ping
     await client.db("admin").command({ ping: 1 });
