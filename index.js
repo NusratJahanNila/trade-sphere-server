@@ -77,6 +77,14 @@ async function run() {
       res.send(result)
     })
 
+    // Delete my-export
+    app.delete('/my-export/:id',async(req,res)=>{
+      const id=req.params.id;
+      const query={_id: new ObjectId(id)}
+
+      const result=await productsCollection.deleteOne(query)
+      res.send(result)
+    })
 
     // ping
     await client.db("admin").command({ ping: 1 });
