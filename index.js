@@ -93,25 +93,32 @@ async function run() {
       const result = await importCollection.insertOne(newProduct)
 
       // minus quantity
-      const importQuantity=newProduct.userQuantity;
-      const id=req.params.id;
-      const query={_id: new ObjectId(id)}
-      const update={
-        $inc : {availableQuantity: -importQuantity}
+      const importQuantity = newProduct.userQuantity;
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) }
+      const update = {
+        $inc: { availableQuantity: -importQuantity }
       }
-      const remainQuantity=await productsCollection.updateOne(query,update)
-      res.send({result,remainQuantity})
+      const remainQuantity = await productsCollection.updateOne(query, update)
+      res.send({ result, remainQuantity })
     })
 
     //My import
-    app.get('/my-imports',async(req,res)=>{
-      const email=req.query.email;
-      const query={importBy:email}
+    app.get('/my-imports', async (req, res) => {
+      const email = req.query.email;
+      const query = { importBy: email }
 
-      const result=await importCollection.find(query).toArray();
+      const result = await importCollection.find(query).toArray();
       res.send(result)
-    }) 
+    })
 
+    //search
+
+    app.get('/search', async (req, res) => {
+      const searchData = req.query.search;
+      const result = await productsCollection.find({ productName: { $regex: searchData, $options: "i" } }).toArray()
+      res.send(result);
+    })
     // ping
     await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
