@@ -58,7 +58,7 @@ async function run() {
     // My Export
     app.get('/my-export',async(req,res)=>{
         const email=req.query.email;
-        const query={exportby: email}
+        const query={exportBy: email}
         
         const result =await productsCollection .find(query).toArray();
         res.send(result);
