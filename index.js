@@ -64,6 +64,19 @@ async function run() {
         res.send(result);
     })
 
+    // Update My-Export
+    app.put('/my-export/:id',async(req,res)=>{
+      const id=req.params.id;
+      const query={_id: new ObjectId(id)}
+
+      const data=req.body;
+      const update={
+        $set:data
+      }
+      const result=await productsCollection.updateOne(query,update)
+      res.send(result)
+    })
+
 
     // ping
     await client.db("admin").command({ ping: 1 });
