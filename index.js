@@ -77,6 +77,11 @@ async function run() {
       const result = await productsCollection.find().sort({ exportAt: -1 }).limit(6).toArray()
       res.send(result)
     })
+    // Top rated products
+    app.get('/top-rated-products', async (req, res) => {
+      const result = await productsCollection.find().sort({ rating: -1 }).toArray()
+      res.send(result)
+    })
 
     // Add export
     app.post('/products',verifyToken, async (req, res) => {
