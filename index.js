@@ -1,12 +1,41 @@
 const express = require('express');
 const cors = require('cors');
 const app = express();
+const admin = require("firebase-admin");
+const serviceAccount = require("./trade-sphere-firebase-adminsdk.json");
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
+require('dotenv').config()
 const port = process.env.PORT || 3000;
 
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+// Firebase
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount)
+});
+
+const verifyToken = async (req, res, next) => {
+  // token is send from client's --> headers.authorization
+  const authorization = req.headers.authorization
+  // console.log(authorization)
+  if(!authorization) {
+   return res.status(401).send({message : "Unauthorize access!"})
+    
+  }
+  const token = authorization.split(' ')[1]
+
+  
+  try{
+    await admin.auth().verifyIdToken(token)
+    next()
+  }
+  catch(error){
+    res.status(401).send({message : "Unauthorize access!"})
+  }
+}
+
 
 // Mongodb
 require('dotenv').config()
@@ -35,7 +64,7 @@ async function run() {
     })
 
     // Product details
-    app.get('/products/:id', async (req, res) => {
+    app.get('/products/:id',verifyToken, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) }
 
@@ -50,14 +79,14 @@ async function run() {
     })
 
     // Add export
-    app.post('/products', async (req, res) => {
+    app.post('/products',verifyToken, async (req, res) => {
       const newProduct = req.body;
       const result = await productsCollection.insertOne(newProduct)
       res.send(result)
     })
 
     // My Export
-    app.get('/my-export', async (req, res) => {
+    app.get('/my-export',verifyToken, async (req, res) => {
       const email = req.query.email;
       const query = { exportBy: email }
 
@@ -104,7 +133,7 @@ async function run() {
     })
 
     //My import
-    app.get('/my-imports', async (req, res) => {
+    app.get('/my-imports',verifyToken, async (req, res) => {
       const email = req.query.email;
       const query = { importBy: email }
 
