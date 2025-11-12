@@ -88,12 +88,12 @@ async function run() {
     })
 
     // Add import
-    app.post('/imports', async (req, res) => {
+    app.post('/imports/:id', async (req, res) => {
       const newProduct = req.body;
       const result = await importCollection.insertOne(newProduct)
 
       // minus quantity
-      const importQuantity = newProduct.userQuantity;
+      const importQuantity = parseInt(newProduct.userQuantity);
       const id = req.params.id;
       const query = { _id: new ObjectId(id) }
       const update = {
