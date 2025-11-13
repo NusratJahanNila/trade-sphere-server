@@ -11,7 +11,6 @@ app.use(express.json());
 
 
 // Mongodb
-require('dotenv').config()
 const uri = `mongodb+srv://${process.env.DB_USERNAME}:${process.env.DB_PASSWORD}@cluster0.sa5bapo.mongodb.net/?appName=Cluster0`;
 
 const client = new MongoClient(uri, {
@@ -24,7 +23,7 @@ const client = new MongoClient(uri, {
 
 async function run() {
   try {
-    await client.connect();
+    // await client.connect();
     // colection
     const db = client.db("trade-db")
     const productsCollection = db.collection('products')
@@ -163,7 +162,7 @@ async function run() {
 
 
     // ping
-    await client.db("admin").command({ ping: 1 });
+    // await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
   } finally {
     // await client.close();
