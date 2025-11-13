@@ -1,8 +1,6 @@
 const express = require('express');
 const cors = require('cors');
 const app = express();
-const admin = require("firebase-admin");
-const serviceAccount = require("./trade-sphere-firebase-adminsdk.json");
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 require('dotenv').config()
 const port = process.env.PORT || 3000;
@@ -10,31 +8,6 @@ const port = process.env.PORT || 3000;
 // Middleware
 app.use(cors());
 app.use(express.json());
-
-// Firebase
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount)
-});
-
-const verifyToken = async (req, res, next) => {
-  // token is send from client's --> headers.authorization
-  const authorization = req.headers.authorization
-  // console.log(authorization)
-  if(!authorization) {
-   return res.status(401).send({message : "Unauthorize access!"})
-    
-  }
-  const token = authorization.split(' ')[1]
-
-  
-  try{
-    await admin.auth().verifyIdToken(token)
-    next()
-  }
-  catch(error){
-    res.status(401).send({message : "Unauthorize access!"})
-  }
-}
 
 
 // Mongodb
@@ -64,11 +37,21 @@ async function run() {
     })
 
     // Product details
-    app.get('/products/:id',verifyToken, async (req, res) => {
+    app.get('/products/:id', async (req, res) => {
       const id = req.params.id;
+      if (!ObjectId.isValid(id)) {
+        return res.status(400).send({
+          error: true,
+          message: "Invalid product ID format. Must be a 24-character hex string."
+        });
+      }
       const query = { _id: new ObjectId(id) }
 
       const result = await productsCollection.findOne(query);
+
+      if (!result) {
+        return res.send({ notFound: true });
+      }
       res.send(result)
     })
 
@@ -84,14 +67,14 @@ async function run() {
     })
 
     // Add export
-    app.post('/products',verifyToken, async (req, res) => {
+    app.post('/products', async (req, res) => {
       const newProduct = req.body;
       const result = await productsCollection.insertOne(newProduct)
       res.send(result)
     })
 
     // My Export
-    app.get('/my-export',verifyToken, async (req, res) => {
+    app.get('/my-export', async (req, res) => {
       const email = req.query.email;
       const query = { exportBy: email }
 
@@ -121,24 +104,34 @@ async function run() {
       res.send(result)
     })
 
-    // Add import
     app.post('/imports/:id', async (req, res) => {
-      const newProduct = req.body;
-      const result = await importCollection.insertOne(newProduct)
+      try {
+        const id = req.params.id;
+        if (!ObjectId.isValid(id)) {
+          return res.status(400).send({ message: "Invalid product ID format." });
+        }
 
-      // minus quantity
-      const importQuantity = parseInt(newProduct.userQuantity);
-      const id = req.params.id;
-      const query = { _id: new ObjectId(id) }
-      const update = {
-        $inc: { availableQuantity: -importQuantity }
+        const importQuantity = parseInt(req.body.userQuantity);
+        if (isNaN(importQuantity) || importQuantity <= 0) {
+          return res.status(400).send({ message: "Invalid import quantity." });
+        }
+
+        const result = await importCollection.insertOne(req.body);
+
+        const query = { _id: new ObjectId(id) };
+        const update = { $inc: { availableQuantity: -importQuantity } };
+        const remainQuantity = await productsCollection.updateOne(query, update);
+
+        res.send({ success: true, result, remainQuantity });
+      } catch (error) {
+        console.error("Update error:", error);
+        res.status(500).send({ message: error.message });
       }
-      const remainQuantity = await productsCollection.updateOne(query, update)
-      res.send({ result, remainQuantity })
-    })
+    });
+
 
     //My import
-    app.get('/my-imports',verifyToken, async (req, res) => {
+    app.get('/my-imports', async (req, res) => {
       const email = req.query.email;
       const query = { importBy: email }
 
