@@ -30,10 +30,68 @@ async function run() {
     const importCollection = db.collection('imports')
 
     // All product 
+    // Add this temporary endpoint to your backend for testing:
     app.get('/products', async (req, res) => {
-      const result = await productsCollection.find().toArray();
-      res.send(result);
-    })
+      const {
+        page = 1,
+        limit = 8,
+        category,
+        rating,
+        sort,
+        search
+      } = req.query;
+
+      let query = {};
+
+      // Category filter
+      if (category && category !== 'all') {
+        query.category = category;
+      }
+
+      // Rating filter
+      if (rating && rating !== 'all') {
+        const minRating = parseFloat(rating);
+        query.rating = { $gte: minRating };
+      }
+
+      // Search
+      if (search) {
+        query.$or = [
+          { productName: { $regex: search, $options: 'i' } },
+          { brand: { $regex: search, $options: 'i' } },
+          { category: { $regex: search, $options: 'i' } }
+        ];
+      }
+
+      // Sort
+      let sortOption = {};
+      switch (sort) {
+        case 'oldest': sortOption = { exportAt: 1 }; break;
+        case 'price-low': sortOption = { price: 1 }; break;
+        case 'price-high': sortOption = { price: -1 }; break;
+        default: sortOption = { exportAt: -1 }; // newest
+      }
+
+      const skip = (parseInt(page) - 1) * parseInt(limit);
+      const total = await productsCollection.countDocuments(query);
+
+      const result = await productsCollection
+        .find(query)
+        .sort(sortOption)
+        .skip(skip)
+        .limit(parseInt(limit))
+        .toArray();
+
+      res.send({
+        success: true,
+        result,
+        total,
+        totalPages: Math.ceil(total / parseInt(limit)),
+        currentPage: parseInt(page)
+      });
+    });
+
+
 
     // Product details
     app.get('/products/:id', async (req, res) => {
