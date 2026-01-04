@@ -30,7 +30,6 @@ async function run() {
     const importCollection = db.collection('imports')
 
     // All product 
-    // Add this temporary endpoint to your backend for testing:
     app.get('/products', async (req, res) => {
       const {
         page = 1,
@@ -90,8 +89,6 @@ async function run() {
         currentPage: parseInt(page)
       });
     });
-
-
 
     // Product details
     app.get('/products/:id', async (req, res) => {
@@ -212,6 +209,156 @@ async function run() {
       const result = await importCollection.deleteOne(query)
       res.send(result)
     })
+
+
+    // -----------------------------
+
+    app.get('/dashboard/summary', async (req, res) => {
+      try {
+        const email = req.query.email;
+        if (!email) return res.send({ error: true });
+
+        const totalProducts = await productsCollection.countDocuments();
+        const myExports = await productsCollection.countDocuments({ exportBy: email });
+        const myImports = await importCollection.countDocuments({ importBy: email });
+
+        res.send({
+          totalProducts,
+          myExports,
+          myImports
+        });
+      } catch (err) {
+        res.status(500).send({ error: true });
+      }
+    });
+    // import analytic api
+    // Import analytics API - FIXED
+    app.get('/dashboard/import-analytics', async (req, res) => {
+      try {
+        const email = req.query.email;
+        if (!email) return res.send([]);
+
+        // Get all imports for this user
+        const userImports = await importCollection.find({ importBy: email }).toArray();
+
+        if (userImports.length === 0) {
+          return res.send([]);
+        }
+
+        // Group by category manually since productId may not exist in products
+        const categoryMap = {};
+
+        for (const importItem of userImports) {
+          const category = importItem.category || "Uncategorized";
+
+          if (!categoryMap[category]) {
+            categoryMap[category] = {
+              count: 0,
+              totalQuantity: 0
+            };
+          }
+
+          categoryMap[category].count += 1;
+          categoryMap[category].totalQuantity += parseInt(importItem.userQuantity || 0);
+        }
+
+        // Convert to array format for chart
+        const formattedResult = Object.keys(categoryMap).map(category => ({
+          category,
+          count: categoryMap[category].count,
+          totalQuantity: categoryMap[category].totalQuantity
+        }));
+
+        res.send(formattedResult);
+      } catch (err) {
+        console.error("Import analytics error:", err);
+        res.status(500).send([]);
+      }
+    });
+
+    // Monthly imports API - SIMPLIFIED
+    app.get('/dashboard/monthly-imports', async (req, res) => {
+      try {
+        const email = req.query.email;
+        if (!email) return res.send([]);
+
+        const userImports = await importCollection.find({ importBy: email }).toArray();
+
+        // Create monthly data
+        const monthData = {};
+        const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+          "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+        userImports.forEach(item => {
+          try {
+            const date = new Date(item.exportAt || item.createdAt || new Date());
+            const month = date.getMonth(); // 0-11
+
+            if (!monthData[month]) {
+              monthData[month] = {
+                count: 0,
+                totalValue: 0
+              };
+            }
+
+            monthData[month].count += 1;
+            monthData[month].totalValue += (parseFloat(item.price) || 0) *
+              (parseInt(item.userQuantity) || 1);
+          } catch (e) {
+            console.log("Date parsing error:", e);
+          }
+        });
+
+        // Format result
+        const formattedResult = Object.keys(monthData).map(monthIdx => ({
+          month: monthNames[parseInt(monthIdx)] || `Month ${parseInt(monthIdx) + 1}`,
+          count: monthData[monthIdx].count,
+          totalValue: monthData[monthIdx].totalValue
+        })).sort((a, b) => {
+          // Sort by month index
+          const monthA = monthNames.indexOf(a.month);
+          const monthB = monthNames.indexOf(b.month);
+          return monthA - monthB;
+        });
+
+        // Fill missing months with zero values
+        const completeResult = monthNames.map((monthName, index) => {
+          const existing = formattedResult.find(item => item.month === monthName);
+          return existing || {
+            month: monthName,
+            count: 0,
+            totalValue: 0
+          };
+        });
+
+        res.send(completeResult);
+      } catch (err) {
+        console.error("Monthly imports error:", err);
+        res.status(500).send([]);
+      }
+    });
+
+    app.get('/dashboard/recent-imports', async (req, res) => {
+      const email = req.query.email;
+      const result = await importCollection
+        .find({ importBy: email })
+        .sort({ exportAt: -1 })
+        .limit(3)
+        .toArray();
+
+      res.send(result);
+    });
+
+    app.get('/dashboard/recent-exports', async (req, res) => {
+      const email = req.query.email;
+      const result = await productsCollection
+        .find({ exportBy: email })
+        .sort({ exportAt: -1 })
+        .limit(3)
+        .toArray();
+
+      res.send(result);
+    });
 
 
 
